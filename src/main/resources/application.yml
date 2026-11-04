@@ -1,0 +1,62 @@
+spring:
+  application:
+    name: sarf
+  datasource:
+    url: ${SARF_DB_URL:jdbc:postgresql://localhost:5432/sarf}
+    username: ${SARF_DB_USER:sarf}
+    password: ${SARF_DB_PASSWORD:sarf}
+  flyway:
+    locations: classpath:db/migration
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${SARF_ISSUER_URI:http://localhost:8180/realms/sarf}
+          audiences: sarf-api
+          # Keycloak place les rôles du realm dans un claim « roles » (voir deploy/keycloak).
+          authorities-claim-name: roles
+          authority-prefix: ROLE_
+          principal-claim-name: preferred_username
+
+server:
+  port: ${SARF_PORT:8080}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  swagger-ui:
+    operations-sorter: alpha
+    oauth:
+      client-id: sarf-swagger
+      use-pkce-with-authorization-code-grant: true
+
+# Seuils et délais des textes (modifiables par arrêté : décret n° 2-07-1235, art. 20).
+sarf:
+  reglementation:
+    seuils-regularite:
+      regime-normal: 20000          # décret n° 2-07-1235, art. 10
+      module-biens-et-services: 100000  # art. 13 d)
+      module-marches: 400000        # art. 13 e)
+      module-contrats: 200000       # art. 13 g)
+    delais-visa-engagement:         # jours ouvrables francs
+      normal-marches: 12            # art. 6
+      normal-autres: 5
+      module-marches: 10            # art. 13
+      module-autres: 4
+    delais-paiement:                # décret n° 2-16-344, jours calendaires
+      constatation-service-fait: 30 # art. 5
+      ordonnancement: 45            # art. 2
+      visa-comptable: 15            # art. 2
+      global: 60                    # art. 2
+      reliquat-minimum-visa: 5      # art. 4
+    taux-somme-a-valoir: 1          # décret n° 2-16-344, art. 12 (en %)
+    seuil-virement-obligatoire: 1500  # RGCP, art. 45

@@ -1,0 +1,159 @@
+{
+  "realm": "sarf",
+  "displayName": "Sarf : chaîne de la dépense publique (démonstration)",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "accessTokenLifespan": 900,
+  "passwordPolicy": "length(12) and notUsername(undefined)",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["fr", "ar", "en"],
+  "defaultLocale": "fr",
+  "roles": {
+    "realm": [
+      { "name": "ADMINISTRATEUR", "description": "Référentiel : lignes budgétaires, taux, jours fériés, accréditations" },
+      { "name": "ORDONNATEUR", "description": "Engage, certifie le service fait, liquide et ordonnance (RGCP, art. 3)" },
+      { "name": "COMPTABLE", "description": "Comptable public : vise les engagements et les paiements, règle" },
+      { "name": "FOURNISSEUR", "description": "Titulaire de la commande publique : dépose ses factures" },
+      { "name": "AUDITEUR", "description": "Consultation et vérification du journal d'audit" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "sarf-swagger",
+      "name": "Swagger UI de Sarf",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8080/swagger-ui/oauth2-redirect.html",
+        "http://localhost:4200/*"
+      ],
+      "webOrigins": ["+"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "protocolMappers": [
+        {
+          "name": "audience sarf-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "sarf-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "rôles du realm",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "multivalued": "true",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "sarf-dev-cli",
+      "name": "Ligne de commande de développement (environnement local uniquement)",
+      "description": "Mot de passe direct pour les scripts de démonstration. Ne jamais l'activer en production.",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "audience sarf-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "sarf-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "rôles du realm",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "multivalued": "true",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin.sarf",
+      "firstName": "Administration",
+      "lastName": "Sarf",
+      "email": "admin.sarf@sarf.example",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "${SARF_DEMO_PASSWORD}", "temporary": false }],
+      "realmRoles": ["ADMINISTRATEUR"]
+    },
+    {
+      "username": "ordonnateur.amal",
+      "firstName": "Amal",
+      "lastName": "Ordonnatrice (fictive)",
+      "email": "ordonnateur.amal@sarf.example",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "${SARF_DEMO_PASSWORD}", "temporary": false }],
+      "realmRoles": ["ORDONNATEUR"]
+    },
+    {
+      "username": "comptable.karim",
+      "firstName": "Karim",
+      "lastName": "Comptable (fictif)",
+      "email": "comptable.karim@sarf.example",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "${SARF_DEMO_PASSWORD}", "temporary": false }],
+      "realmRoles": ["COMPTABLE"]
+    },
+    {
+      "username": "fournisseur.atlas",
+      "firstName": "Atlas Informatique",
+      "lastName": "SARL (fictive)",
+      "email": "fournisseur.atlas@sarf.example",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "${SARF_DEMO_PASSWORD}", "temporary": false }],
+      "realmRoles": ["FOURNISSEUR"]
+    },
+    {
+      "username": "auditeur.salma",
+      "firstName": "Salma",
+      "lastName": "Auditrice (fictive)",
+      "email": "auditeur.salma@sarf.example",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "${SARF_DEMO_PASSWORD}", "temporary": false }],
+      "realmRoles": ["AUDITEUR"]
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+# Only the application jar is sent to the image builder.
+*
+!target/sarf-*.jar
