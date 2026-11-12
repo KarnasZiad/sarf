@@ -45,7 +45,8 @@ public record DossierVue(
         List<Anomalie> anomalies,
         List<Suspension> suspensions,
         List<Decision> decisions,
-        Requisition requisition) {
+        Requisition requisition,
+        LocalDate echeanceCertification) {
 
     public record Delais(LocalDate echeanceOrdonnancement, LocalDate echeancePaiement, LocalDate echeanceVisaComptable,
             long joursSuspendus, long joursDeRetard, boolean ordonnancementEnRetard, boolean visaComptableEnRetard) {
@@ -82,7 +83,8 @@ public record DossierVue(
     public record Requisition(LocalDate date, String ordonnateur, String motif) {
     }
 
-    static DossierVue de(DossierPaiement dossier, EtatDelais etat, BigDecimal interets, Set<MotifSuspension> anomalies) {
+    static DossierVue de(DossierPaiement dossier, EtatDelais etat, BigDecimal interets, Set<MotifSuspension> anomalies,
+            LocalDate echeanceCertification) {
         var d = dossier.donnees();
         var o = d.origine();
         var r = d.requisition();
@@ -95,6 +97,6 @@ public record DossierVue(
                 Delais.de(etat), anomalies.stream().sorted().map(Anomalie::de).toList(),
                 d.suspensions().stream().map(Suspension::de).toList(),
                 d.decisions().stream().map(Decision::de).toList(),
-                r == null ? null : new Requisition(r.date(), r.ordonnateur(), r.motif()));
+                r == null ? null : new Requisition(r.date(), r.ordonnateur(), r.motif()), echeanceCertification);
     }
 }

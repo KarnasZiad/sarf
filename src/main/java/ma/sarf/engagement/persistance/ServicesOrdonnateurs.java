@@ -2,6 +2,7 @@ package ma.sarf.engagement.persistance;
 
 import java.util.List;
 import java.util.Optional;
+import ma.sarf.engagement.AccreditationVue;
 import ma.sarf.engagement.domaine.RegimeControle;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -43,6 +44,12 @@ public class ServicesOrdonnateurs {
                 .param("service", serviceCode)
                 .query(Integer.class)
                 .single() > 0;
+    }
+
+    public List<AccreditationVue> accreditations() {
+        return jdbc.sql("SELECT utilisateur, service_code FROM accreditations ORDER BY service_code, utilisateur")
+                .query((rs, n) -> new AccreditationVue(rs.getString("utilisateur"), rs.getString("service_code")))
+                .list();
     }
 
     public void accrediter(String utilisateur, String serviceCode) {

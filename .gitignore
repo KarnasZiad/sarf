@@ -1,6 +1,10 @@
 # Build output
 target/
 *.class
+frontend/node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
 
 # Local secrets: never commit them (use .env.example as the template)
 .env

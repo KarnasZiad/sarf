@@ -46,7 +46,11 @@ class DossiersController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('FOURNISSEUR', 'ORDONNATEUR')")
-    DossierVue deposer(@RequestBody @Valid DepotFacture depot) {
+    DossierVue deposer(@RequestBody @Valid DepotFacture depot, Authentication authentification) {
+        if (estSeulementFournisseur(authentification)) {
+            return depense.deposerCommeFournisseur(depot.engagementId(), depot.numeroFacture(), depot.montantFacture(),
+                    depot.retenueGarantie(), depot.rib(), ActeurCourant.nom());
+        }
         return depense.deposer(depot.engagementId(), depot.numeroFacture(), depot.montantFacture(),
                 depot.retenueGarantie(), depot.rib(), ActeurCourant.nom());
     }
@@ -136,7 +140,7 @@ class DossiersController {
         return depense.payerSurRequisition(id, mode, ActeurCourant.nom());
     }
 
-    private static boolean estSeulementFournisseur(Authentication authentification) {
+    static boolean estSeulementFournisseur(Authentication authentification) {
         var autorites = authentification.getAuthorities().stream().map(a -> a.getAuthority()).toList();
         return autorites.contains("ROLE_" + Roles.FOURNISSEUR)
                 && autorites.stream().noneMatch(a -> a.equals("ROLE_" + Roles.ORDONNATEUR)

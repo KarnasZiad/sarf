@@ -1,0 +1,4 @@
+# Seuls l'interface compilée et la configuration nginx sont envoyées à la construction de l'image.
+*
+!dist
+!nginx.conf

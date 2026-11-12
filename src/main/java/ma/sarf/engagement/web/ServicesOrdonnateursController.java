@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.util.List;
 import ma.sarf.commun.securite.ActeurCourant;
+import ma.sarf.engagement.AccreditationVue;
 import ma.sarf.engagement.EngagementService;
 import ma.sarf.engagement.ServiceOrdonnateurVue;
 import org.springframework.http.HttpStatus;
@@ -30,6 +31,12 @@ class ServicesOrdonnateursController {
     @PreAuthorize("isAuthenticated()")
     List<ServiceOrdonnateurVue> lister() {
         return engagements.servicesOrdonnateurs();
+    }
+
+    @GetMapping("/accreditations")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'AUDITEUR')")
+    List<AccreditationVue> accreditations() {
+        return engagements.accreditations();
     }
 
     /** Accréditation d'un ordonnateur auprès du comptable assignataire (RGCP, art. 5). */

@@ -16,6 +16,7 @@ import ma.sarf.engagement.domaine.Engagement;
 import ma.sarf.engagement.domaine.Proposition;
 import ma.sarf.engagement.domaine.StatutEngagement;
 import ma.sarf.engagement.domaine.TypeDecision;
+import ma.sarf.engagement.persistance.ComptesFournisseurs;
 import ma.sarf.engagement.persistance.Engagements;
 import ma.sarf.engagement.persistance.ServicesOrdonnateurs;
 import org.springframework.context.ApplicationEventPublisher;
@@ -31,17 +32,19 @@ public class EngagementService {
 
     private final Engagements engagements;
     private final ServicesOrdonnateurs services;
+    private final ComptesFournisseurs comptes;
     private final BudgetService budget;
     private final Reglementation reglementation;
     private final JoursFeries joursFeries;
     private final Clock horloge;
     private final ApplicationEventPublisher evenements;
 
-    EngagementService(Engagements engagements, ServicesOrdonnateurs services, BudgetService budget,
-            Reglementation reglementation, JoursFeries joursFeries, Clock horloge,
+    EngagementService(Engagements engagements, ServicesOrdonnateurs services, ComptesFournisseurs comptes,
+            BudgetService budget, Reglementation reglementation, JoursFeries joursFeries, Clock horloge,
             ApplicationEventPublisher evenements) {
         this.engagements = engagements;
         this.services = services;
+        this.comptes = comptes;
         this.budget = budget;
         this.reglementation = reglementation;
         this.joursFeries = joursFeries;
@@ -131,6 +134,58 @@ public class EngagementService {
                 .orElseThrow(() -> new ObjetIntrouvableException("Engagement", id));
         engagement.liquider(Montant.de(montant));
         engagements.mettreAJour(engagement);
+    }
+
+    /**
+     * Applique à une proposition les contrôles que le comptable verra, sans rien enregistrer ni
+     * réserver. L'ordonnateur peut ainsi corriger le dossier avant de l'envoyer.
+     */
+    @Transactional(readOnly = true)
+    public PreControleVue preControler(long ligneBudgetaireId, String serviceCode, Proposition proposition, String acteur) {
+        LigneBudgetaireVue ligne = budget.consulter(ligneBudgetaireId);
+        var service = services.trouver(serviceCode)
+                .orElseThrow(() -> new ObjetIntrouvableException("Service ordonnateur", serviceCode));
+        Engagement brouillon = Engagement.soumettre(ligne.exercice(), service.code(), service.regime(), ligne.id(),
+                ligne.imputation(), acteur, proposition, aujourdhui(), reglementation, joursFeries.calendrier());
+        return new PreControleVue(brouillon.sommeAValoir().valeur(), brouillon.montantAEngager().valeur(),
+                brouillon.echeanceVisa(), brouillon.exigeControleDeRegularite(reglementation), anomalies(brouillon));
+    }
+
+    /** Commandes visées du fournisseur que représente ce compte. */
+    @Transactional(readOnly = true)
+    public List<CommandeVue> commandesDe(String utilisateur) {
+        return comptes.trouver(utilisateur).map(compte -> engagements.lister(StatutEngagement.VISE).stream()
+                .filter(e -> e.proposition().fournisseurIdentifiant().equals(compte.fournisseurIdentifiant()))
+                .map(e -> new CommandeVue(e.id(), e.exercice(), e.proposition().objet(),
+                        e.proposition().typeCommande().name(), e.proposition().referencePiece(), e.serviceOrdonnateur(),
+                        e.proposition().montantPropose().valeur(), e.resteALiquider().valeur()))
+                .toList()).orElse(List.of());
+    }
+
+    @Transactional(readOnly = true)
+    public boolean estCommandeDe(long engagementId, String utilisateur) {
+        return comptes.trouver(utilisateur)
+                .map(compte -> pourDepense(engagementId).fournisseurIdentifiant().equals(compte.fournisseurIdentifiant()))
+                .orElse(false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CompteFournisseurVue> comptesFournisseurs() {
+        return comptes.lister();
+    }
+
+    @Transactional
+    public CompteFournisseurVue rattacherCompte(String utilisateur, String identifiant, String nom, String acteur) {
+        var compte = new CompteFournisseurVue(utilisateur.strip(), identifiant.strip(), nom.strip());
+        comptes.enregistrer(compte);
+        evenements.publishEvent(new EvenementEngagement(0, "COMPTE_FOURNISSEUR_RATTACHE", acteur,
+                compte.utilisateur() + " représente " + compte.fournisseurNom() + " (" + compte.fournisseurIdentifiant() + ")"));
+        return compte;
+    }
+
+    @Transactional(readOnly = true)
+    public List<AccreditationVue> accreditations() {
+        return services.accreditations();
     }
 
     @Transactional(readOnly = true)

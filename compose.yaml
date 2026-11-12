@@ -2,8 +2,10 @@
 #
 #   cp .env.example .env            # puis renseigner les mots de passe
 #   ./mvnw -DskipTests package
+#   (cd frontend && npm ci && npm run build)
 #   docker compose up -d --build
 #
+# Application : http://localhost:3000
 # Swagger UI : http://localhost:8080/swagger-ui.html (bouton « Authorize », client sarf-swagger)
 # Keycloak   : http://localhost:8180 (console d'administration : admin / KEYCLOAK_ADMIN_PASSWORD)
 
@@ -69,6 +71,16 @@ services:
       interval: 10s
       retries: 30
     mem_limit: 512m
+
+  web:
+    build: ./frontend
+    image: sarf-web:local
+    ports:
+      - "3000:8080"
+    depends_on:
+      sarf:
+        condition: service_healthy
+    mem_limit: 64m
 
 volumes:
   postgres-data:

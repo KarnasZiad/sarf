@@ -92,6 +92,16 @@ public class DepenseService {
         return consulter(id);
     }
 
+    /** Dépôt par un compte fournisseur : seule une commande de ce fournisseur peut être facturée. */
+    @Transactional
+    public DossierVue deposerCommeFournisseur(long engagementId, String numeroFacture, BigDecimal montantFacture,
+            BigDecimal retenueGarantie, String rib, String acteur) {
+        if (!engagements.estCommandeDe(engagementId, acteur)) {
+            throw new ObjetIntrouvableException("Engagement", engagementId);
+        }
+        return deposer(engagementId, numeroFacture, montantFacture, retenueGarantie, rib, acteur);
+    }
+
     @Transactional
     public DossierVue certifierServiceFait(long id, String acteur) {
         DossierPaiement dossier = verrouiller(id);
@@ -242,10 +252,13 @@ public class DepenseService {
         } else {
             interets = etat.enRetard() ? interets(dossier, aujourdhui).total().valeur() : BigDecimal.ZERO.setScale(2);
         }
-        boolean entreLesMainsDuComptable = dossier.statut() == StatutDossier.ORDONNANCE
+        // Dès la liquidation, l'ordonnateur voit ce que le comptable relèvera : il corrige avant d'ordonnancer.
+        boolean controleApplicable = dossier.statut() == StatutDossier.LIQUIDE
+                || dossier.statut() == StatutDossier.ORDONNANCE
                 || dossier.statut() == StatutDossier.REQUISITIONNE;
-        Set<MotifSuspension> anomalies = entreLesMainsDuComptable ? anomalies(dossier) : EnumSet.noneOf(MotifSuspension.class);
-        return DossierVue.de(dossier, etat, interets, anomalies);
+        Set<MotifSuspension> anomalies = controleApplicable ? anomalies(dossier) : EnumSet.noneOf(MotifSuspension.class);
+        LocalDate echeanceCertification = dossier.dateDepot().plusDays(reglementation.delaisPaiement().constatationServiceFait());
+        return DossierVue.de(dossier, etat, interets, anomalies, echeanceCertification);
     }
 
     private DossierPaiement verrouiller(long id) {

@@ -24,6 +24,47 @@
   },
   "clients": [
     {
+      "clientId": "sarf-web",
+      "name": "Application web de Sarf",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:3000/*", "http://localhost:5173/*"],
+      "webOrigins": ["http://localhost:3000", "http://localhost:5173"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*##http://localhost:5173/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "audience sarf-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "sarf-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "rôles du realm",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "multivalued": "true",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
       "clientId": "sarf-swagger",
       "name": "Swagger UI de Sarf",
       "enabled": true,
@@ -118,7 +159,7 @@
     {
       "username": "ordonnateur.amal",
       "firstName": "Amal",
-      "lastName": "Ordonnatrice (fictive)",
+      "lastName": "Ordonnatrice",
       "email": "ordonnateur.amal@sarf.example",
       "emailVerified": true,
       "enabled": true,
@@ -128,7 +169,7 @@
     {
       "username": "comptable.karim",
       "firstName": "Karim",
-      "lastName": "Comptable (fictif)",
+      "lastName": "Comptable",
       "email": "comptable.karim@sarf.example",
       "emailVerified": true,
       "enabled": true,
@@ -138,7 +179,7 @@
     {
       "username": "fournisseur.atlas",
       "firstName": "Atlas Informatique",
-      "lastName": "SARL (fictive)",
+      "lastName": "SARL",
       "email": "fournisseur.atlas@sarf.example",
       "emailVerified": true,
       "enabled": true,
@@ -148,7 +189,7 @@
     {
       "username": "auditeur.salma",
       "firstName": "Salma",
-      "lastName": "Auditrice (fictive)",
+      "lastName": "Auditrice",
       "email": "auditeur.salma@sarf.example",
       "emailVerified": true,
       "enabled": true,

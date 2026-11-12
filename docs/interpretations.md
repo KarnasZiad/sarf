@@ -29,5 +29,9 @@ Un prototype doit dire clairement où il interprète les textes et où il simpli
   bordereau d'émission distinct (RGCP, art. 86).
 - **Pièces justificatives** : seuls le service fait et le RIB sont vérifiés, la nomenclature
   officielle n'étant pas reprise.
-- **Fournisseurs** : un fournisseur voit les factures qu'il a déposées. Le lien entre son compte
-  Keycloak et son identifiant fiscal n'est pas modélisé.
+- **Fournisseurs** : un compte est rattaché à un fournisseur par l'administrateur. Il ne voit et ne
+  facture que ses commandes, et ne consulte que les factures qu'il a déposées.
+- **Signature électronique** : la plateforme réelle exige une signature par certificat. Sarf
+  horodate le dépôt et délivre un accusé avec code QR, sans signature ni tiers de confiance.
+- **Facture jointe** : l'écran de dépôt exige le fichier. L'API accepte un dépôt sans pièce, et
+  l'absence de facture jointe ne bloque pas les étapes suivantes.

@@ -4,11 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 import ma.sarf.commun.config.HorlogeSimulee;
@@ -20,6 +23,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
@@ -148,6 +152,66 @@ class ChaineDepenseIT {
         mvc.perform(get("/api/audit/integrite").with(AUDITEUR))
                 .andExpect(jsonPath("$.intacte").value(true))
                 .andExpect(jsonPath("$.entreesVerifiees").value(org.hamcrest.Matchers.greaterThanOrEqualTo(7)));
+    }
+
+    @Test
+    @DisplayName("Pré-contrôle sans effet, commandes du seul fournisseur concerné, pièce jointe contrôlée")
+    void parcoursAvecPiecesJointes() throws Exception {
+        horloge.allerAu(LocalDate.of(2026, 3, 2));
+        List<Integer> lignes = JsonPath.read(corps(mvc.perform(get("/api/lignes-budgetaires?exercice=2026")
+                .with(ORDONNATEUR))), "$[?(@.imputation == '1.2.1.10.45')].id");
+        int ligne = lignes.getFirst();
+        String proposition = """
+                {"ligneBudgetaireId": %d, "serviceOrdonnateur": "SRV-DSI", "proposition": {
+                  "objet": "Maintenance annuelle", "typeCommande": "BON_DE_COMMANDE",
+                  "fournisseurNom": "Atlas Informatique SARL", "fournisseurIdentifiant": "001234567000089",
+                  "lignes": [{"designation": "Forfait", "quantite": 1, "prixUnitaire": 30000}],
+                  "montantPropose": 30000}}
+                """.formatted(ligne);
+
+        // Le pré-contrôle signale la pièce manquante sans rien réserver ni enregistrer.
+        poster("/api/engagements/pre-controle", ORDONNATEUR, proposition)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sommeAValoir").value(300.00))
+                .andExpect(jsonPath("$.anomalies[0].code").value("PIECE_ENGAGEMENT_MANQUANTE"));
+        mvc.perform(get("/api/lignes-budgetaires/" + ligne).with(ORDONNATEUR))
+                .andExpect(jsonPath("$.montantEngage").value(0.0));
+
+        int engagementId = JsonPath.read(corps(poster("/api/engagements", ORDONNATEUR,
+                proposition.replace("\"typeCommande\": \"BON_DE_COMMANDE\",",
+                        "\"typeCommande\": \"BON_DE_COMMANDE\", \"referencePiece\": \"BC-77\","))
+                .andExpect(status().isCreated())), "$.id");
+        poster("/api/engagements/" + engagementId + "/decision", COMPTABLE, "{\"type\": \"VISA\"}")
+                .andExpect(status().isOk());
+
+        // Le fournisseur retrouve sa commande ; un autre compte ne peut pas la facturer.
+        mvc.perform(get("/api/engagements/commandes").with(FOURNISSEUR))
+                .andExpect(jsonPath("$[?(@.id == " + engagementId + ")].resteALiquider").value(30000.00));
+        String depot = """
+                {"engagementId": %d, "numeroFacture": "F-PJ-1", "montantFacture": 30000, "rib": "%s"}
+                """.formatted(engagementId, RIB);
+        poster("/api/dossiers", jeton("fournisseur.inconnu", "FOURNISSEUR"), depot).andExpect(status().isNotFound());
+        int dossierId = JsonPath.read(corps(poster("/api/dossiers", FOURNISSEUR, depot)
+                .andExpect(status().isCreated())), "$.id");
+
+        // Seul un vrai PDF est accepté, et le dossier d'un autre fournisseur reste invisible.
+        String documents = "/api/dossiers/" + dossierId + "/documents";
+        mvc.perform(multipart(documents).file(new MockMultipartFile("fichier", "facture.pdf", "application/pdf",
+                        "<html>pas un pdf</html>".getBytes(StandardCharsets.UTF_8)))
+                        .param("nature", "FACTURE").with(FOURNISSEUR))
+                .andExpect(status().isBadRequest());
+        byte[] pdf = "%PDF-1.7 facture".getBytes(StandardCharsets.US_ASCII);
+        int documentId = JsonPath.read(mvc.perform(multipart(documents)
+                        .file(new MockMultipartFile("fichier", "facture.pdf", "application/pdf", pdf))
+                        .param("nature", "FACTURE").with(FOURNISSEUR))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.typeContenu").value("application/pdf"))
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        mvc.perform(get(documents + "/" + documentId + "/contenu").with(COMPTABLE))
+                .andExpect(status().isOk())
+                .andExpect(content().bytes(pdf));
+        mvc.perform(get(documents).with(jeton("fournisseur.inconnu", "FOURNISSEUR")))
+                .andExpect(status().isNotFound());
     }
 
     @Test

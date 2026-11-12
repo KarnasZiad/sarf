@@ -55,6 +55,7 @@ Un **monolithe modulaire** (Spring Modulith) dont les règles métier sont écri
 | `budget` | Lignes budgétaires : crédits ouverts, engagés, payés ; verrou contre les dépassements |
 | `engagement` | Proposition, contrôle budgétaire et de régularité, visa, suspension, refus |
 | `depense` | Dossier de paiement, chronomètre légal, intérêts moratoires, réquisition |
+| `documents` | Pièces justificatives : format vérifié sur le contenu, empreinte SHA-256, sans suppression |
 | `audit` | Journal en ajout seul, chaîné par empreintes, vérifiable |
 | `pilotage` | Tableau de bord : taux d'engagement et de paiement, délai moyen, intérêts |
 
@@ -65,8 +66,9 @@ générés dans `target/spring-modulith-docs`.
 Les décisions et leurs raisons sont dans [docs/adr](docs/adr).
 
 **Stack** : Java 21, Spring Boot 4.0, Spring Modulith 2.0, PostgreSQL 18 (accès SQL explicite par
-`JdbcClient`), Flyway, Keycloak 26 (OIDC), springdoc (Swagger UI), JUnit 5, ArchUnit,
-Testcontainers ou PostgreSQL embarqué, Docker Compose, GitHub Actions avec CodeQL et Trivy.
+`JdbcClient`), Flyway, Keycloak 26 (OIDC), React 19 et TypeScript, springdoc (Swagger UI), JUnit 5,
+ArchUnit, Playwright, Testcontainers ou PostgreSQL embarqué, Docker Compose, GitHub Actions avec
+CodeQL et Trivy.
 
 ## Démarrer
 
@@ -76,7 +78,7 @@ Testcontainers ou PostgreSQL embarqué, Docker Compose, GitHub Actions avec Code
 ./mvnw verify
 ```
 
-Ce sont 75 tests unitaires, d'architecture et web, et 4 tests d'intégration sur un vrai
+Ce sont 77 tests unitaires, d'architecture et web, et 5 tests d'intégration sur un vrai
 PostgreSQL. Si Docker tourne, les tests d'intégration utilisent un conteneur (Testcontainers) ;
 sinon, sous Windows, un **PostgreSQL embarqué** d'environ 50 Mo de mémoire.
 
@@ -85,9 +87,14 @@ sinon, sous Windows, un **PostgreSQL embarqué** d'environ 50 Mo de mémoire.
 ```bash
 cp .env.example .env      # puis choisir les mots de passe
 ./mvnw -DskipTests package
+(cd frontend && npm ci && npm run build)
 docker compose up -d --build
 ```
 
+- **Application : <http://localhost:3000>**. Chaque acteur se connecte et fait son travail à
+  l'écran : corbeille par échéance, saisie avec pré-contrôle, visa, dépôt de facture avec pièce
+  jointe, certification, liquidation, ordonnance, paiement, réquisition, documents imprimables,
+  pilotage et journal d'audit.
 - Swagger UI : <http://localhost:8080/swagger-ui.html>. Le bouton « Authorize » ouvre la connexion
   Keycloak.
 - Comptes de démonstration : `admin.sarf`, `ordonnateur.amal`, `comptable.karim`,
@@ -108,4 +115,5 @@ docker compose up -d --build
    calculés
 7. `auditeur.salma` : `GET /api/pilotage?exercice=2026` et `GET /api/audit/integrite`
 
-Le test `ChaineDepenseIT` exécute exactement ce scénario.
+Le test `ChaineDepenseIT` exécute exactement ce scénario au niveau de l'API. Une fois la pile
+démarrée, `npm run e2e` dans `frontend/` le rejoue dans un vrai navigateur, à travers les écrans.

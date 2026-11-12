@@ -11,8 +11,10 @@ import java.math.BigDecimal;
 import java.util.List;
 import ma.sarf.commun.domaine.Montant;
 import ma.sarf.commun.securite.ActeurCourant;
+import ma.sarf.engagement.CommandeVue;
 import ma.sarf.engagement.EngagementService;
 import ma.sarf.engagement.EngagementVue;
+import ma.sarf.engagement.PreControleVue;
 import ma.sarf.engagement.domaine.LigneDetail;
 import ma.sarf.engagement.domaine.Proposition;
 import ma.sarf.engagement.domaine.StatutEngagement;
@@ -45,6 +47,21 @@ class EngagementsController {
     EngagementVue soumettre(@RequestBody @Valid NouvelEngagement demande) {
         return engagements.soumettre(demande.ligneBudgetaireId(), demande.serviceOrdonnateur(),
                 demande.proposition().versDomaine(), ActeurCourant.nom());
+    }
+
+    /** Les contrôles du comptable, avant l'envoi : rien n'est enregistré. */
+    @PostMapping("/pre-controle")
+    @PreAuthorize("hasRole('ORDONNATEUR')")
+    PreControleVue preControler(@RequestBody @Valid NouvelEngagement demande) {
+        return engagements.preControler(demande.ligneBudgetaireId(), demande.serviceOrdonnateur(),
+                demande.proposition().versDomaine(), ActeurCourant.nom());
+    }
+
+    /** Commandes visées que le fournisseur connecté peut facturer. */
+    @GetMapping("/commandes")
+    @PreAuthorize("hasRole('FOURNISSEUR')")
+    List<CommandeVue> commandes() {
+        return engagements.commandesDe(ActeurCourant.nom());
     }
 
     @GetMapping
